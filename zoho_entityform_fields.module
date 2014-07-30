@@ -1,0 +1,126 @@
+<?php
+
+/**
+ * Define arrays mapping Drupal fields to Zoho fields
+ */
+function zoho_entityform_fields_leads_arrays()
+{
+	//***this array maps zoho field key => drupal field key
+	//$zoho_key => $drupal_key
+	//(source: https://www.zoho.com/crm/help/api/modules-fields.html#Leads)
+	//complete set of Zoho Keys for Leads below
+	//each key will need to be mapped to a Drupal field in below arrays for complete EntityForm > Zoho Leads solution
+	//*** TO-DO / QUESTION : should we be setting "Company" as well??? 
+	//It's marked as required in their API docs, but does not seem to be a requirement for inserting a new Lead, 
+	//as it works without submitting this field either way.
+	/*
+	Lead Owner
+	Salutation
+	First Name
+	Title
+	Last Name*
+	Company*
+	Lead Source
+	Industry
+	Annual Revenue
+	Phone
+	Mobile
+	Fax
+	Email
+	Secondary Email
+	Skype ID
+	Website
+	Lead Status
+	Rating
+	No. of Employees
+	Email Opt-out
+	Campaign Source
+	Street
+	City
+	State
+	Zip Code
+	Country
+	Description
+	Web Form Source
+	*/
+	$aZohoToDrupal = array(
+		"First Name" => 'field_first_name',
+		"Last Name" => 'field_last_name',
+		"Email" => 'field_email',
+		"Phone" => 'field_phone_number',
+		"Street" => 'field_street',
+		"City" => 'field_city',
+		"Zip Code" => 'field_zip_code',
+		"Web Form Source" => 'field_page_tracking',
+		"Description" => 'field_comment_or_question',
+		"Preferred Contact Method" => 'field_preferred_way_to_be_contac',
+		"Preferred Contact Time" => 'field_when_should_we_contact_you',
+	);
+	
+	//reference array 
+	//maps drupal field to field value key (this is potentially different for each field type - DEVEL module can help detect needed key value, if field type is inspected from a node, or entityform object is printed out from hook_form_alter() or some other method)
+	$aDrupalFieldKey = array(
+		"field_first_name" => 'value',
+		"field_last_name" => 'value',
+		"field_email" => 'email',
+		"field_phone_number" => 'value',
+		"field_street" => 'value',
+		"field_city" => 'value',
+		"field_zip_code" => 'value',
+		"field_page_tracking" => 'value',
+		"field_comment_or_question" => 'value',
+		"field_preferred_way_to_be_contac" => 'value',
+		"field_when_should_we_contact_you" => 'value',
+	);
+	$aReturn = array('aZohoToDrupal' => $aZohoToDrupal, 'aDrupalFieldKey' => $aDrupalFieldKey);
+	return $aReturn;
+}
+
+
+function zoho_entityform_fields_submit_leads(&$form, &$form_state)
+{
+	$oEntity = $form['#entity'];
+	/*
+	//***format for dynamically declared variables below:
+	$field_name = field_get_items('entityform',$oEntity,'field_name');
+	$name = $field_name[0]['value'];
+	$field_email = field_get_items('entityform',$oEntity,'field_email');
+	$email = $field_email[0]['email'];
+	///etc.
+	*/
+	$aZoho = zoho_entityform_fields_leads_arrays();	
+	$aZohoFields = $aZoho['aZohoToDrupal'];
+	$aDrupalFields = $aZoho['aDrupalFieldKey'];
+	
+	foreach ($aDrupalFields as $k=>$v)
+	{
+		//foreach drupal field:
+		//dynamically declare variables containing drupal field array values
+		if (property_exists($oEntity,$k))
+		{
+			${$k} = field_get_items('entityform',$oEntity,$k);
+		}
+	}
+	
+	//foreach ZohoField
+	//construct xml to post to Zoho, referencing relevant field in entity object for value
+	$values = '';
+	foreach ($aZohoFields as $zoho_key => $drupal_key) {
+		//reference dynamic variables defined above
+		
+		if (property_exists($oEntity,$drupal_key)) {
+		  $field = $$drupal_key;
+		  if(!empty($field))
+		  {
+		    $values .= '<FL val="' . $zoho_key . '">' . $field[0][$aDrupalFields[$drupal_key]] . '</FL>';
+		  }
+		}
+	}
+	$xml ='xmlData=
+		<Leads>
+		<row no="1">' . $values . '</row>
+		</Leads>
+	';
+	$result = zoho_post_records('Leads', $xml);
+		
+}

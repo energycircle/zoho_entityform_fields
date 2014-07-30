@@ -1,0 +1,4 @@
+name = Zoho Entityform Fields
+description = Maps Drupal fields to Zoho fields, allowing for Entityform / Zoho integration
+core = 7.x
+dependencies[] = zoho
